@@ -1,4 +1,5 @@
 // Copyright (c) 2017 Gorillalabs. All rights reserved.
+// Copyright (c) 2020 xrstf.
 
 package middleware
 
@@ -6,8 +7,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/juju/errors"
-	"github.com/xrstf/go-powershell/utils"
+	"go.xrstf.de/go-powershell/utils"
 )
 
 const (
@@ -83,12 +83,12 @@ func (c *UserPasswordCredential) prepare(s Middleware) (interface{}, error) {
 
 	_, _, err := s.Execute(fmt.Sprintf("$%s = ConvertTo-SecureString -String %s -AsPlainText -Force", pwname, utils.QuoteArg(c.Password)))
 	if err != nil {
-		return nil, errors.Annotate(err, "Could not convert password to secure string")
+		return nil, fmt.Errorf("failed to convert password to secure string: %w", err)
 	}
 
 	_, _, err = s.Execute(fmt.Sprintf("$%s = New-Object -TypeName 'System.Management.Automation.PSCredential' -ArgumentList %s, $%s", name, utils.QuoteArg(c.Username), pwname))
 	if err != nil {
-		return nil, errors.Annotate(err, "Could not create PSCredential object")
+		return nil, fmt.Errorf("failed to create PSCredential object: %w", err)
 	}
 
 	return fmt.Sprintf("$%s", name), nil

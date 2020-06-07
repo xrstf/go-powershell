@@ -1,4 +1,5 @@
 // Copyright (c) 2017 Gorillalabs. All rights reserved.
+// Copyright (c) 2020 xrstf.
 
 package middleware
 
@@ -6,8 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/juju/errors"
-	"github.com/xrstf/go-powershell/utils"
+	"go.xrstf.de/go-powershell/utils"
 )
 
 type session struct {
@@ -20,7 +20,7 @@ func NewSession(upstream Middleware, config *SessionConfig) (Middleware, error) 
 	if ok {
 		credentialParamValue, err := asserted.prepare(upstream)
 		if err != nil {
-			return nil, errors.Annotate(err, "Could not setup credentials")
+			return nil, fmt.Errorf("failed to setup credentials: %w", err)
 		}
 
 		config.Credential = credentialParamValue
@@ -31,7 +31,7 @@ func NewSession(upstream Middleware, config *SessionConfig) (Middleware, error) 
 
 	_, _, err := upstream.Execute(fmt.Sprintf("$%s = New-PSSession %s", name, args))
 	if err != nil {
-		return nil, errors.Annotate(err, "Could not create new PSSession")
+		return nil, fmt.Errorf("failed to create new PSSession: %w", err)
 	}
 
 	return &session{upstream, name}, nil
@@ -42,6 +42,6 @@ func (s *session) Execute(cmd string) (string, string, error) {
 }
 
 func (s *session) Exit() {
-	s.upstream.Execute(fmt.Sprintf("Disconnect-PSSession -Session $%s", s.name))
+	_, _, _ = s.upstream.Execute(fmt.Sprintf("Disconnect-PSSession -Session $%s", s.name))
 	s.upstream.Exit()
 }

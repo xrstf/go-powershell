@@ -1,19 +1,24 @@
 // Copyright (c) 2017 Gorillalabs. All rights reserved.
+// Copyright (c) 2020 xrstf.
 
 package powershell
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 	"sync"
 
-	"github.com/xrstf/go-powershell/backend"
-	"github.com/xrstf/go-powershell/utils"
-	"github.com/juju/errors"
+	"go.xrstf.de/go-powershell/backend"
+	"go.xrstf.de/go-powershell/utils"
 )
 
 const newline = "\r\n"
+
+var (
+	ShellClosedErr = errors.New("shell is closed")
+)
 
 type Shell interface {
 	Execute(cmd string) (string, string, error)
@@ -38,7 +43,7 @@ func New(backend backend.Starter) (Shell, error) {
 
 func (s *shell) Execute(cmd string) (string, string, error) {
 	if s.handle == nil {
-		return "", "", errors.Annotate(errors.New(cmd), "Cannot execute commands on closed shells.")
+		return "", "", ShellClosedErr
 	}
 
 	outBoundary := createBoundary()
@@ -49,7 +54,7 @@ func (s *shell) Execute(cmd string) (string, string, error) {
 
 	_, err := s.stdin.Write([]byte(full))
 	if err != nil {
-		return "", "", errors.Annotate(errors.Annotate(err, cmd), "Could not send PowerShell command")
+		return "", "", fmt.Errorf("failed to send PowerShell command: %w", err)
 	}
 
 	// read stdout and stderr
@@ -65,14 +70,14 @@ func (s *shell) Execute(cmd string) (string, string, error) {
 	waiter.Wait()
 
 	if len(serr) > 0 {
-		return sout, serr, errors.Annotate(errors.New(cmd), serr)
+		return sout, serr, errors.New(serr)
 	}
 
 	return sout, serr, nil
 }
 
 func (s *shell) Exit() {
-	s.stdin.Write([]byte("exit" + newline))
+	_, _ = s.stdin.Write([]byte("exit" + newline))
 
 	// if it's possible to close stdin, do so (some backends, like the local one,
 	// do support it)
@@ -81,7 +86,7 @@ func (s *shell) Exit() {
 		closer.Close()
 	}
 
-	s.handle.Wait()
+	_ = s.handle.Wait()
 
 	s.handle = nil
 	s.stdin = nil
@@ -89,7 +94,7 @@ func (s *shell) Exit() {
 	s.stderr = nil
 }
 
-func streamReader(stream io.Reader, boundary string, buffer *string, signal *sync.WaitGroup) error {
+func streamReader(stream io.Reader, boundary string, buffer *string, signal *sync.WaitGroup) {
 	// read all output until we have found our boundary token
 	output := ""
 	bufsize := 64
@@ -99,7 +104,7 @@ func streamReader(stream io.Reader, boundary string, buffer *string, signal *syn
 		buf := make([]byte, bufsize)
 		read, err := stream.Read(buf)
 		if err != nil {
-			return err
+			return
 		}
 
 		output = output + string(buf[:read])
@@ -111,8 +116,6 @@ func streamReader(stream io.Reader, boundary string, buffer *string, signal *syn
 
 	*buffer = strings.TrimSuffix(output, marker)
 	signal.Done()
-
-	return nil
 }
 
 func createBoundary() string {

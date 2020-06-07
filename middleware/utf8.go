@@ -1,4 +1,5 @@
 // Copyright (c) 2017 Gorillalabs. All rights reserved.
+// Copyright (c) 2020 xrstf.
 
 package middleware
 
@@ -6,7 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/xrstf/go-powershell/utils"
+	"go.xrstf.de/go-powershell/utils"
 )
 
 // utf8 implements a primitive middleware that encodes all outputs

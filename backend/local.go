@@ -1,12 +1,12 @@
 // Copyright (c) 2017 Gorillalabs. All rights reserved.
+// Copyright (c) 2020 xrstf.
 
 package backend
 
 import (
+	"fmt"
 	"io"
 	"os/exec"
-
-	"github.com/juju/errors"
 )
 
 type Local struct{}
@@ -16,22 +16,22 @@ func (b *Local) StartProcess(cmd string, args ...string) (Waiter, io.Writer, io.
 
 	stdin, err := command.StdinPipe()
 	if err != nil {
-		return nil, nil, nil, nil, errors.Annotate(err, "Could not get hold of the PowerShell's stdin stream")
+		return nil, nil, nil, nil, fmt.Errorf("failed to get PowerShell's stdin stream: %w", err)
 	}
 
 	stdout, err := command.StdoutPipe()
 	if err != nil {
-		return nil, nil, nil, nil, errors.Annotate(err, "Could not get hold of the PowerShell's stdout stream")
+		return nil, nil, nil, nil, fmt.Errorf("failed to get PowerShell's stdout stream: %w", err)
 	}
 
 	stderr, err := command.StderrPipe()
 	if err != nil {
-		return nil, nil, nil, nil, errors.Annotate(err, "Could not get hold of the PowerShell's stderr stream")
+		return nil, nil, nil, nil, fmt.Errorf("failed to get PowerShell's stderr stream: %w", err)
 	}
 
 	err = command.Start()
 	if err != nil {
-		return nil, nil, nil, nil, errors.Annotate(err, "Could not spawn PowerShell process")
+		return nil, nil, nil, nil, fmt.Errorf("failed to spawn PowerShell process: %w", err)
 	}
 
 	return command, stdin, stdout, stderr, nil

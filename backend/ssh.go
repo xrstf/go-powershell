@@ -1,4 +1,5 @@
 // Copyright (c) 2017 Gorillalabs. All rights reserved.
+// Copyright (c) 2020 xrstf.
 
 package backend
 
@@ -7,8 +8,6 @@ import (
 	"io"
 	"regexp"
 	"strings"
-
-	"github.com/juju/errors"
 )
 
 // sshSession exists so we don't create a hard dependency on crypto/ssh.
@@ -28,22 +27,22 @@ type SSH struct {
 func (b *SSH) StartProcess(cmd string, args ...string) (Waiter, io.Writer, io.Reader, io.Reader, error) {
 	stdin, err := b.Session.StdinPipe()
 	if err != nil {
-		return nil, nil, nil, nil, errors.Annotate(err, "Could not get hold of the SSH session's stdin stream")
+		return nil, nil, nil, nil, fmt.Errorf("failed to get SSH session's stdin stream: %w", err)
 	}
 
 	stdout, err := b.Session.StdoutPipe()
 	if err != nil {
-		return nil, nil, nil, nil, errors.Annotate(err, "Could not get hold of the SSH session's stdout stream")
+		return nil, nil, nil, nil, fmt.Errorf("failed to get SSH session's stdout stream: %w", err)
 	}
 
 	stderr, err := b.Session.StderrPipe()
 	if err != nil {
-		return nil, nil, nil, nil, errors.Annotate(err, "Could not get hold of the SSH session's stderr stream")
+		return nil, nil, nil, nil, fmt.Errorf("failed to get SSH session's stderr stream: %w", err)
 	}
 
 	err = b.Session.Start(b.createCmd(cmd, args))
 	if err != nil {
-		return nil, nil, nil, nil, errors.Annotate(err, "Could not spawn process via SSH")
+		return nil, nil, nil, nil, fmt.Errorf("failed to spawn process via SSH: %w", err)
 	}
 
 	return b.Session, stdin, stdout, stderr, nil
